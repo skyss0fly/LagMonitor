@@ -1,6 +1,6 @@
 name: LagMonitor
 version: 1.0.0
-main: LagMonitor\Main
+main: skyss0fly\LagMonitor\Main
 api: 5.0.0
 author: skyss0fly
 commands:
