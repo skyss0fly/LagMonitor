@@ -1,0 +1,23 @@
+name: LagMonitor
+version: 1.0.0
+main: LagMonitor\Main
+api: 5.0.0
+author: skyss0fly
+commands:
+  checkperformance:
+    description: "Displays current server performance."
+    permission: LagMonitor.performance
+  optimize:
+    description: "Runs optimization tasks."
+    permission: LagMonitor.optimize
+permissions:
+  LagMonitor.performance:
+    description: "Displays Server's Performance."
+    default: op
+  LagMonitor.optimize:
+    description: "Optimize the Servers Performance."
+    default: op
+default:
+  cleanup-entities:
+    - "ItemEntity"
+    - "Zombie"
