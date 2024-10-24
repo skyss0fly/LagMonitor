@@ -8,15 +8,16 @@ use pocketmine\scheduler\ClosureTask;
 use pocketmine\event\Listener;
 use pocketmine\event\player\PlayerMoveEvent;
 use pocketmine\utils\TextFormat as TF;
+use pocketmine\player\Player;
 
 class Main extends PluginBase implements Listener {
 
-    private $lowTpsThreshold = 18.0; // TPS below this is considered laggy
-    private $highMemoryThreshold = 80; // Percentage of memory usage considered high
+    private $lowTpsThreshold = 18.0;
+    private $highMemoryThreshold = 80;
     private $activePlayers = [];
 
     public function onEnable(): void {
-        // Register event listeners for player movement tracking
+        // Register event listeners
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
 
         // Save default config
@@ -25,12 +26,11 @@ class Main extends PluginBase implements Listener {
         // Schedule TPS monitoring every 60 seconds
         $this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function() : void {
             $this->checkServerPerformance();
-        }), 1200); // 60 seconds = 1200 ticks (20 ticks per second)
-        
+        }), 1200); // 60 seconds = 1200 ticks
+
         $this->getLogger()->info(TF::GREEN . "LagMonitor has been enabled.");
     }
 
-    // Command handler for admin commands
     public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool {
         switch ($command->getName()) {
             case "checkperformance":
@@ -43,10 +43,9 @@ class Main extends PluginBase implements Listener {
         return false;
     }
 
-    // Function to check server performance (called automatically or via command)
     private function checkServerPerformance(): void {
         $tps = $this->getServer()->getTicksPerSecond();
-        $memoryUsage = memory_get_usage(true) / 1024 / 1024; // Memory usage in MB
+        $memoryUsage = memory_get_usage(true) / 1024 / 1024;
         $memoryLimit = ini_get('memory_limit');
         $usedPercentage = ($memoryUsage / $this->getMemoryLimitInMB($memoryLimit)) * 100;
 
@@ -59,10 +58,9 @@ class Main extends PluginBase implements Listener {
         }
     }
 
-    // Display performance stats to the command sender
     private function displayPerformanceStats(CommandSender $sender): void {
         $tps = $this->getServer()->getTicksPerSecond();
-        $memoryUsage = memory_get_usage(true) / 1024 / 1024; // Memory usage in MB
+        $memoryUsage = memory_get_usage(true) / 1024 / 1024;
         $memoryLimit = ini_get('memory_limit');
         $usedPercentage = ($memoryUsage / $this->getMemoryLimitInMB($memoryLimit)) * 100;
 
@@ -71,7 +69,6 @@ class Main extends PluginBase implements Listener {
         $sender->sendMessage(TF::YELLOW . "Memory Usage: " . round($memoryUsage, 2) . " MB (" . round($usedPercentage, 2) . "%)");
     }
 
-    // Function to optimize server by clearing unused entities, unloading chunks, etc.
     private function optimizeServer(CommandSender $sender): void {
         $this->clearUnusedEntities();
         $this->unloadUnusedChunks();
@@ -81,7 +78,6 @@ class Main extends PluginBase implements Listener {
         $sender->sendMessage(TF::GREEN . "Server optimized: Cleared entities, unloaded chunks, handled inactive player data.");
     }
 
-    // Clear unused entities based on config
     private function clearUnusedEntities(): void {
         $entityTypes = $this->getConfig()->get("cleanup-entities", ["ItemEntity"]);
 
@@ -98,7 +94,6 @@ class Main extends PluginBase implements Listener {
         $this->getServer()->broadcastMessage(TF::YELLOW . "Cleared unused entities based on config.");
     }
 
-    // Unload unused chunks to free up resources
     private function unloadUnusedChunks(): void {
         foreach ($this->getServer()->getWorldManager()->getWorlds() as $world) {
             $world->unloadChunks(true);
@@ -106,9 +101,8 @@ class Main extends PluginBase implements Listener {
         $this->getServer()->broadcastMessage(TF::YELLOW . "Unloaded unused chunks.");
     }
 
-    // Unload chunks around inactive players
     private function unloadInactivePlayerChunks(): void {
-        $inactivityLimit = 300; // 5 minutes
+        $inactivityLimit = 300;
 
         foreach ($this->getServer()->getOnlinePlayers() as $player) {
             $lastActive = $this->activePlayers[$player->getName()] ?? time();
@@ -119,32 +113,33 @@ class Main extends PluginBase implements Listener {
         }
     }
 
-    // Clear inactive player data (e.g., players who haven't logged in for 1 week)
     private function clearInactivePlayerData(): void {
-        $inactivityThreshold = 604800; // 1 week in seconds
+        $inactivityThreshold = 604800;
+        $playerDataDir = $this->getServer()->getDataPath() . "players/";
 
-        foreach ($this->getServer()->getOfflinePlayers() as $player) {
-            if ($player->getLastPlayed() < (time() - $inactivityThreshold)) {
-                $this->getServer()->getPlayerDataManager()->removePlayerData($player->getName());
-                $this->getLogger()->info("Cleared data for inactive player: " . $player->getName());
+        foreach (scandir($playerDataDir) as $file) {
+            if ($file !== "." && $file !== "..") {
+                $filePath = $playerDataDir . $file;
+                if (filemtime($filePath) < (time() - $inactivityThreshold)) {
+                    unlink($filePath); // Delete inactive player's data file
+                    $this->getLogger()->info("Cleared data for inactive player: " . $file);
+                }
             }
         }
     }
 
-    // Track player movement to detect active players
     public function onPlayerMove(PlayerMoveEvent $event): void {
         $player = $event->getPlayer();
         $this->activePlayers[$player->getName()] = time();
     }
 
-    // Get the memory limit in MB
     private function getMemoryLimitInMB(string $memoryLimit): float {
         if (strpos($memoryLimit, 'M') !== false) {
             return (float)str_replace('M', '', $memoryLimit);
         } elseif (strpos($memoryLimit, 'G') !== false) {
             return (float)str_replace('G', '', $memoryLimit) * 1024;
         } else {
-            return (float)$memoryLimit / 1024 / 1024; // Convert bytes to MB
+            return (float)$memoryLimit / 1024 / 1024;
         }
     }
 }
